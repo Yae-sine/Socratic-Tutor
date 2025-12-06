@@ -5,9 +5,10 @@ import { DrawingPad } from './DrawingPad';
 interface InputAreaProps {
   onSendMessage: (text: string, attachment?: Attachment) => void;
   isLoading: boolean;
+  isStoryMode: boolean;
 }
 
-export const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }) => {
+export const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading, isStoryMode }) => {
   const [text, setText] = useState('');
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -81,6 +82,12 @@ export const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }
     setText(target.value);
   };
 
+  const getPlaceholder = () => {
+    if (attachment) return "Ask about this...";
+    if (isStoryMode) return "Ask for a story about a concept...";
+    return "Type a math question...";
+  };
+
   return (
     <>
       {isDrawing && (
@@ -149,7 +156,7 @@ export const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }
                 onChange={autoResize}
                 onKeyDown={handleKeyDown}
                 disabled={isLoading}
-                placeholder={attachment ? "Ask about this..." : "Type a math question..."}
+                placeholder={getPlaceholder()}
                 rows={1}
                 className="w-full bg-slate-100 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white resize-none transition-all placeholder:text-slate-400 disabled:opacity-50"
                 style={{ maxHeight: '150px' }}
@@ -171,7 +178,7 @@ export const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }
           </div>
           
           <div className="text-center mt-2">
-              <p className="text-[10px] text-slate-400">Gemini 3 Pro Preview • Compassionate Mode</p>
+              <p className="text-[10px] text-slate-400">Gemini 3 Pro Preview • {isStoryMode ? 'Storytelling Mode' : 'Compassionate Mode'}</p>
           </div>
         </div>
       </div>

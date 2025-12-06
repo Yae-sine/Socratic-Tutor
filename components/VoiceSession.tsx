@@ -3,13 +3,14 @@ import { LiveSession } from '../services/liveService';
 
 interface VoiceSessionProps {
   onClose: () => void;
+  isStoryMode: boolean;
 }
 
-export const VoiceSession: React.FC<VoiceSessionProps> = ({ onClose }) => {
+export const VoiceSession: React.FC<VoiceSessionProps> = ({ onClose, isStoryMode }) => {
   const [status, setStatus] = useState<'connecting' | 'connected'>('connecting');
 
   useEffect(() => {
-    const session = new LiveSession(onClose);
+    const session = new LiveSession(onClose, isStoryMode);
     
     const startSession = async () => {
       try {
@@ -26,7 +27,7 @@ export const VoiceSession: React.FC<VoiceSessionProps> = ({ onClose }) => {
     return () => {
       session.disconnect();
     };
-  }, [onClose]);
+  }, [onClose, isStoryMode]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 backdrop-blur-sm animate-fade-in">
@@ -48,10 +49,12 @@ export const VoiceSession: React.FC<VoiceSessionProps> = ({ onClose }) => {
 
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold text-white">
-            {status === 'connecting' ? 'Connecting...' : 'Listening...'}
+            {status === 'connecting' ? 'Connecting...' : (isStoryMode ? 'Storyteller Listening...' : 'Tutor Listening...')}
           </h2>
           <p className="text-slate-400 text-sm">
-            Speak naturally. Ask "Why?" if you get stuck.
+            {isStoryMode 
+              ? "Ask about a concept to hear a story." 
+              : "Speak naturally. Ask \"Why?\" if you get stuck."}
           </p>
         </div>
 

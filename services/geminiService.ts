@@ -5,7 +5,7 @@ import { Message, Sender } from "../types";
 const MODEL_NAME = "gemini-3-pro-preview";
 
 // System instruction to enforce Socratic method
-export const SYSTEM_INSTRUCTION = `
+export const SOCRATIC_INSTRUCTION = `
 You are a compassionate, Socratic AI math tutor. Your goal is to help the student learn and understand, not just to provide answers.
 
 Rules:
@@ -19,12 +19,26 @@ Rules:
 8. Never be condescending. Treat mistakes as learning opportunities.
 `;
 
+export const STORYTELLING_INSTRUCTION = `
+You are a compassionate teacher who explains math and science concepts through engaging, short narratives or analogies.
+
+Rules:
+1. When asked about a concept, do NOT give a textbook definition immediately.
+2. Create a brief story (1-3 paragraphs) or a relatable analogy to explain the concept.
+3. Connect the story directly back to the specific math/science principle.
+4. Keep language clear and accessible, adapting to the user's apparent level.
+5. If the user asks for another explanation, provide a completely different analogy/story.
+6. Maintain a warm, encouraging tone.
+7. If the user uploads an image of a problem, explain the underlying concept using a story first, then briefly guide them on how to apply it.
+`;
+
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const sendMessageToGemini = async (
   currentHistory: Message[],
   newMessageText: string,
-  attachment?: { mimeType: string; data: string }
+  attachment: { mimeType: string; data: string } | undefined,
+  isStoryMode: boolean = false
 ): Promise<string> => {
   try {
     // 1. Convert local Message history to Gemini API Content format
@@ -74,7 +88,7 @@ export const sendMessageToGemini = async (
       model: MODEL_NAME,
       contents: contents,
       config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: isStoryMode ? STORYTELLING_INSTRUCTION : SOCRATIC_INSTRUCTION,
         // High thinking budget for complex math reasoning as requested
         thinkingConfig: {
             thinkingBudget: 32768

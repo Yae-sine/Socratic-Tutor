@@ -1,5 +1,5 @@
 import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
-import { SYSTEM_INSTRUCTION } from "./geminiService";
+import { SOCRATIC_INSTRUCTION, STORYTELLING_INSTRUCTION } from "./geminiService";
 
 const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-09-2025';
 
@@ -15,10 +15,12 @@ export class LiveSession {
   private sessionPromise: Promise<any> | null = null;
   private onDisconnectCallback: () => void;
   private stream: MediaStream | null = null;
+  private isStoryMode: boolean;
 
-  constructor(onDisconnect: () => void) {
+  constructor(onDisconnect: () => void, isStoryMode: boolean = false) {
     this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     this.onDisconnectCallback = onDisconnect;
+    this.isStoryMode = isStoryMode;
   }
 
   async connect() {
@@ -38,7 +40,7 @@ export class LiveSession {
       model: LIVE_MODEL,
       config: {
         responseModalities: [Modality.AUDIO],
-        systemInstruction: SYSTEM_INSTRUCTION, // Reuse the persona
+        systemInstruction: this.isStoryMode ? STORYTELLING_INSTRUCTION : SOCRATIC_INSTRUCTION,
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } }, // Friendly voice
         },
