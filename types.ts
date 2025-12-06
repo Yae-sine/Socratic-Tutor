@@ -21,3 +21,6 @@ export interface ChatState {
   messages: Message[];
   isLoading: boolean;
 }
+
+export type LearningMode = 'socratic' | 'storyteller' | 'debate';
+export type ComplexityLevel = 'eli5' | 'standard' | 'expert';

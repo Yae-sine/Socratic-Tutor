@@ -1,28 +1,47 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, Sender, Attachment } from './types';
+import { Message, Sender, Attachment, LearningMode, ComplexityLevel } from './types';
 import { MessageBubble } from './components/MessageBubble';
 import { InputArea } from './components/InputArea';
 import { TypingIndicator } from './components/TypingIndicator';
 import { VoiceSession } from './components/VoiceSession';
 import { sendMessageToGemini } from './services/geminiService';
 
-// Simple ID generator to avoid external dependency for this demo
+// Simple ID generator
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+const INITIAL_MESSAGE: Message = {
+  id: 'welcome',
+  sender: Sender.BOT,
+  text: "Hello! I'm your AI Learning Companion. \n\nI can help you learn step-by-step, tell stories, or even debate topics! How should we start today?",
+  timestamp: new Date(),
+};
+
 const App: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      sender: Sender.BOT,
-      text: "Hello! I'm your Socratic math tutor. \n\nI'm here to help you understand math concepts step-by-step, rather than just giving you the answers. \n\nFeel free to upload a photo of a problem, type a question, or switch to voice mode!",
-      timestamp: new Date(),
-    },
-  ]);
+  // State for Messages with LocalStorage init
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem('chat_history');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Re-hydrate Date objects
+        return parsed.map((m: any) => ({...m, timestamp: new Date(m.timestamp)}));
+      }
+    } catch (e) {
+      console.error("Failed to load history", e);
+    }
+    return [INITIAL_MESSAGE];
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
-  const [isStoryMode, setIsStoryMode] = useState(false);
+  
+  // New Config States
+  const [learningMode, setLearningMode] = useState<LearningMode>('socratic');
+  const [complexity, setComplexity] = useState<ComplexityLevel>('standard');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Scroll on new message
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -30,6 +49,11 @@ const App: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  // Persist messages to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('chat_history', JSON.stringify(messages));
+  }, [messages]);
 
   const handleSendMessage = async (text: string, attachment?: Attachment) => {
     const userMessage: Message = {
@@ -44,7 +68,7 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const responseText = await sendMessageToGemini(messages, text, attachment, isStoryMode);
+      const responseText = await sendMessageToGemini(messages, text, attachment, learningMode, complexity);
 
       const botMessage: Message = {
         id: generateId(),
@@ -68,18 +92,11 @@ const App: React.FC = () => {
     }
   };
 
-  const toggleStoryMode = () => {
-    setIsStoryMode(!isStoryMode);
-    // Add a system message indicating mode switch
-    const modeSwitchMsg: Message = {
-      id: generateId(),
-      sender: Sender.BOT,
-      text: !isStoryMode 
-        ? "**Storytelling Mode Activated!** 📖\n\nI will now explain concepts using short narratives and analogies. Ask me about a topic!"
-        : "**Socratic Tutor Mode Activated!** 🎓\n\nI'm back to helping you solve problems step-by-step.",
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, modeSwitchMsg]);
+  const clearMemory = () => {
+    if (window.confirm("Are you sure you want to clear our learning history?")) {
+      setMessages([INITIAL_MESSAGE]);
+      localStorage.removeItem('chat_history');
+    }
   };
 
   return (
@@ -88,52 +105,104 @@ const App: React.FC = () => {
       {isVoiceMode && (
         <VoiceSession 
           onClose={() => setIsVoiceMode(false)} 
-          isStoryMode={isStoryMode}
+          mode={learningMode}
+          complexity={complexity}
         />
       )}
 
       {/* Header */}
-      <header className="flex-none bg-white border-b border-slate-200 px-4 md:px-6 py-4 shadow-sm z-10 flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+      <header className="flex-none bg-white border-b border-slate-200 px-4 py-3 shadow-sm z-10">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-4 items-center justify-between">
+          
+          {/* Logo & Title */}
+          <div className="flex items-center gap-3 w-full md:w-auto justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-600 rounded-lg text-white shadow-lg shadow-indigo-200">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-slate-800 tracking-tight leading-tight">Learning Companion</h1>
+                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Powered by Gemini 3 Pro</p>
+              </div>
+            </div>
+            
+            {/* Mobile Voice Button (Visible only on small screens) */}
+            <button
+                onClick={() => setIsVoiceMode(true)}
+                className="md:hidden p-2 bg-indigo-50 text-indigo-600 rounded-full"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            </button>
           </div>
-          <div className="hidden sm:block">
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">Socratic Tutor</h1>
-            <p className="text-xs text-slate-500 font-medium">Step-by-step learning companion</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2 md:gap-3">
-          {/* Story Mode Toggle */}
-          <button
-            onClick={toggleStoryMode}
-            className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all border ${
-              isStoryMode 
-                ? 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-2 ring-indigo-500/20' 
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-            }`}
-            title="Toggle Storytelling Mode"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-            <span className="hidden sm:inline">Story Mode</span>
-          </button>
+          
+          {/* Controls */}
+          <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto justify-center md:justify-end">
+            
+            {/* Mode Selector */}
+            <div className="relative group">
+               <select 
+                  value={learningMode}
+                  onChange={(e) => setLearningMode(e.target.value as LearningMode)}
+                  className="appearance-none bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-semibold py-2 pl-3 pr-8 rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+               >
+                 <option value="socratic">Socratic Tutor</option>
+                 <option value="storyteller">Storyteller</option>
+                 <option value="debate">Debate Partner</option>
+               </select>
+               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+               </div>
+            </div>
 
-          {/* Voice Mode Button */}
-          <button
-            onClick={() => setIsVoiceMode(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-sm font-medium transition-colors border border-slate-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-            <span className="hidden sm:inline">Voice Mode</span>
-            <span className="sm:hidden">Voice</span>
-          </button>
+            {/* Complexity Selector */}
+            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <button 
+                onClick={() => setComplexity('eli5')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${complexity === 'eli5' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                title="Explain Like I'm 5"
+              >
+                ELI5
+              </button>
+              <button 
+                onClick={() => setComplexity('standard')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${complexity === 'standard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Standard
+              </button>
+              <button 
+                onClick={() => setComplexity('expert')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${complexity === 'expert' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Expert
+              </button>
+            </div>
+
+            <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
+
+            {/* Desktop Voice Button */}
+            <button
+              onClick={() => setIsVoiceMode(true)}
+              className="hidden md:flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-bold transition-all shadow-md shadow-indigo-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+              <span>Voice Mode</span>
+            </button>
+            
+            {/* Clear Memory */}
+             <button
+              onClick={clearMemory}
+              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+              title="Clear Memory"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Chat Area */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth">
-        <div className="max-w-4xl mx-auto flex flex-col min-h-full">
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth bg-slate-50/50">
+        <div className="max-w-3xl mx-auto flex flex-col min-h-full">
           {messages.map((msg) => (
             <MessageBubble key={msg.id} message={msg} />
           ))}
@@ -149,12 +218,14 @@ const App: React.FC = () => {
       </main>
 
       {/* Input Area */}
-      <footer className="flex-none z-10">
-        <InputArea 
-          onSendMessage={handleSendMessage} 
-          isLoading={isLoading} 
-          isStoryMode={isStoryMode}
-        />
+      <footer className="flex-none z-10 bg-white">
+        <div className="max-w-3xl mx-auto">
+             <InputArea 
+              onSendMessage={handleSendMessage} 
+              isLoading={isLoading} 
+              isStoryMode={learningMode === 'storyteller'} 
+            />
+        </div>
       </footer>
     </div>
   );

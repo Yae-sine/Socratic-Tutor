@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { LiveSession } from '../services/liveService';
+import { LearningMode, ComplexityLevel } from '../types';
 
 interface VoiceSessionProps {
   onClose: () => void;
-  isStoryMode: boolean;
+  mode: LearningMode;
+  complexity: ComplexityLevel;
 }
 
-export const VoiceSession: React.FC<VoiceSessionProps> = ({ onClose, isStoryMode }) => {
+export const VoiceSession: React.FC<VoiceSessionProps> = ({ onClose, mode, complexity }) => {
   const [status, setStatus] = useState<'connecting' | 'connected'>('connecting');
 
   useEffect(() => {
-    const session = new LiveSession(onClose, isStoryMode);
+    const session = new LiveSession(onClose, mode, complexity);
     
     const startSession = async () => {
       try {
@@ -27,7 +29,7 @@ export const VoiceSession: React.FC<VoiceSessionProps> = ({ onClose, isStoryMode
     return () => {
       session.disconnect();
     };
-  }, [onClose, isStoryMode]);
+  }, [onClose, mode, complexity]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 backdrop-blur-sm animate-fade-in">
@@ -49,13 +51,16 @@ export const VoiceSession: React.FC<VoiceSessionProps> = ({ onClose, isStoryMode
 
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold text-white">
-            {status === 'connecting' ? 'Connecting...' : (isStoryMode ? 'Storyteller Listening...' : 'Tutor Listening...')}
+            {status === 'connecting' ? 'Connecting...' : (mode === 'storyteller' ? 'Storyteller Listening...' : mode === 'debate' ? 'Debate Partner Ready' : 'Tutor Listening...')}
           </h2>
-          <p className="text-slate-400 text-sm">
-            {isStoryMode 
-              ? "Ask about a concept to hear a story." 
-              : "Speak naturally. Ask \"Why?\" if you get stuck."}
-          </p>
+          <div className="flex flex-col gap-1">
+             <p className="text-slate-300 text-sm font-medium">
+               Mode: {mode.charAt(0).toUpperCase() + mode.slice(1)} • Complexity: {complexity === 'eli5' ? 'ELI5' : complexity.charAt(0).toUpperCase() + complexity.slice(1)}
+             </p>
+             <p className="text-slate-400 text-xs">
+                I'm listening for emotion in your voice to adapt my style.
+             </p>
+          </div>
         </div>
 
         <button
