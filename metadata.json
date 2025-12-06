@@ -1,0 +1,7 @@
+{
+  "name": "Socratic Math Tutor",
+  "description": "A compassionate, step-by-step AI math tutor that helps you learn rather than just giving answers.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
